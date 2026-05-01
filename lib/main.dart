@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'models/journal_entry.dart';
 import 'screens/home_screen.dart';
 import 'screens/new_entry_screen.dart';
 import 'screens/history_screen.dart';
@@ -32,15 +33,14 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
+  final List<JournalEntry> _entries = [];
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    NewEntryScreen(),
-    HistoryScreen(),
-    InsightsScreen(),
-    ResourcesScreen(),
-    SettingsScreen(),
-  ];
+  void _addEntry(JournalEntry entry) {
+    setState(() {
+      _entries.insert(0, entry);
+      _selectedIndex = 2; // go to History after save
+    });
+  }
 
   void _onTap(int index) {
     setState(() {
@@ -50,8 +50,17 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> screens = [
+      const HomeScreen(),
+      NewEntryScreen(onEntrySaved: _addEntry),
+      HistoryScreen(entries: _entries),
+      const InsightsScreen(),
+      const ResourcesScreen(),
+      const SettingsScreen(),
+    ];
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onTap,
