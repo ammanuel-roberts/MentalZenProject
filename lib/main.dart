@@ -33,12 +33,22 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
+
+  // Temporary in-memory list of journal entries
   final List<JournalEntry> _entries = [];
 
+  // Called when a new entry is saved
   void _addEntry(JournalEntry entry) {
     setState(() {
-      _entries.insert(0, entry);
-      _selectedIndex = 2; // go to History after save
+      _entries.insert(0, entry); // add newest at top
+      _selectedIndex = 2; // switch to History tab
+    });
+  }
+
+  // Called when an entry is deleted
+  void _deleteEntry(int index) {
+    setState(() {
+      _entries.removeAt(index);
     });
   }
 
@@ -53,7 +63,10 @@ class _MainNavigationState extends State<MainNavigation> {
     final List<Widget> screens = [
       const HomeScreen(),
       NewEntryScreen(onEntrySaved: _addEntry),
-      HistoryScreen(entries: _entries),
+      HistoryScreen(
+        entries: _entries,
+        onDelete: _deleteEntry,
+      ),
       const InsightsScreen(),
       const ResourcesScreen(),
       const SettingsScreen(),
