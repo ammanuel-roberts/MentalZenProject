@@ -67,7 +67,7 @@ class _MainNavigationState extends State<MainNavigation> {
         entries: _entries,
         onDelete: _deleteEntry,
       ),
-      const InsightsScreen(),
+      InsightsScreen(entries: _entries),
       const ResourcesScreen(),
       const SettingsScreen(),
     ];
