@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
 import 'models/journal_entry.dart';
 import 'screens/home_screen.dart';
 import 'screens/new_entry_screen.dart';
@@ -7,7 +10,13 @@ import 'screens/insights_screen.dart';
 import 'screens/resources_screen.dart';
 import 'screens/settings_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MentalZenApp());
 }
 
@@ -40,8 +49,8 @@ class _MainNavigationState extends State<MainNavigation> {
   // Called when a new entry is saved
   void _addEntry(JournalEntry entry) {
     setState(() {
-      _entries.insert(0, entry); // add newest at top
-      _selectedIndex = 2; // switch to History tab
+      _entries.insert(0, entry);
+      _selectedIndex = 2;
     });
   }
 
