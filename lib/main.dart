@@ -113,14 +113,27 @@ class _MainNavigationState extends State<MainNavigation> {
   void addEntry(JournalEntry entry) {
     setState(() {
       entries.insert(0, entry);
-      selectedIndex = 2; // go to history
+      selectedIndex = 2;
     });
   }
 
-  void deleteEntry(int index) {
-    setState(() {
-      entries.removeAt(index);
-    });
+  
+  void deleteEntry(int index) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    final entry = entries[index];
+
+    try {
+      await firestoreService.deleteEntry(user.uid, entry.entryId);
+
+      setState(() {
+        entries.removeAt(index);
+      });
+    } catch (e) {
+      debugPrint('Error deleting entry: $e');
+    }
   }
 
   void onTap(int index) {
@@ -128,7 +141,6 @@ class _MainNavigationState extends State<MainNavigation> {
       selectedIndex = index;
     });
 
-    // Refresh entries when opening History or Insights
     if (index == 2 || index == 3) {
       loadEntries();
     }
@@ -140,7 +152,6 @@ class _MainNavigationState extends State<MainNavigation> {
       const HomeScreen(),
       NewEntryScreen(onEntrySaved: addEntry),
 
-      // 🔧 FIXED (no const issue anymore)
       isLoadingEntries
           ? Scaffold(
               appBar: AppBar(title: const Text('History')),

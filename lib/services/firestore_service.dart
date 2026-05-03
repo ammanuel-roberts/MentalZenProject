@@ -23,4 +23,9 @@ class FirestoreService {
       return JournalEntry.fromDocument(doc);
     }).toList();
   }
+
+  // 🔥 NEW
+  Future<void> deleteEntry(String userId, String entryId) async {
+    await getEntriesCollection(userId).doc(entryId).delete();
+  }
 }
