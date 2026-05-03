@@ -30,6 +30,13 @@ class JournalEntry {
 
   factory JournalEntry.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final timestamp = data['createdAt'];
+
+    DateTime createdAt = DateTime.now();
+
+    if (timestamp is Timestamp) {
+      createdAt = timestamp.toDate();
+    }
 
     return JournalEntry(
       entryId: data['entryId'] ?? doc.id,
@@ -37,7 +44,7 @@ class JournalEntry {
       title: data['title'] ?? '',
       text: data['text'] ?? '',
       mood: data['mood'] ?? 'Neutral',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      createdAt: createdAt,
     );
   }
 }

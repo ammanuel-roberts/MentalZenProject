@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 
 import 'models/journal_entry.dart';
 import 'services/auth_service.dart';
+import 'services/firestore_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/new_entry_screen.dart';
@@ -70,49 +71,96 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0;
+  int selectedIndex = 0;
+  bool isLoadingEntries = false;
 
-  // Temporary in-memory list of journal entries
-  final List<JournalEntry> _entries = [];
+  final List<JournalEntry> entries = [];
+  final FirestoreService firestoreService = FirestoreService();
 
-  void _addEntry(JournalEntry entry) {
+  @override
+  void initState() {
+    super.initState();
+    loadEntries();
+  }
+
+  Future<void> loadEntries() async {
+    final User? user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
     setState(() {
-      _entries.insert(0, entry);
-      _selectedIndex = 2;
+      isLoadingEntries = true;
+    });
+
+    try {
+      final loadedEntries = await firestoreService.getEntries(user.uid);
+
+      setState(() {
+        entries.clear();
+        entries.addAll(loadedEntries);
+      });
+    } catch (e) {
+      debugPrint('Error loading entries: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingEntries = false;
+        });
+      }
+    }
+  }
+
+  void addEntry(JournalEntry entry) {
+    setState(() {
+      entries.insert(0, entry);
+      selectedIndex = 2; // go to history
     });
   }
 
-  void _deleteEntry(int index) {
+  void deleteEntry(int index) {
     setState(() {
-      _entries.removeAt(index);
+      entries.removeAt(index);
     });
   }
 
-  void _onTap(int index) {
+  void onTap(int index) {
     setState(() {
-      _selectedIndex = index;
+      selectedIndex = index;
     });
+
+    // Refresh entries when opening History or Insights
+    if (index == 2 || index == 3) {
+      loadEntries();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
       const HomeScreen(),
-      NewEntryScreen(onEntrySaved: _addEntry),
-      HistoryScreen(
-        entries: _entries,
-        onDelete: _deleteEntry,
-      ),
-      InsightsScreen(entries: _entries),
+      NewEntryScreen(onEntrySaved: addEntry),
+
+      // 🔧 FIXED (no const issue anymore)
+      isLoadingEntries
+          ? Scaffold(
+              appBar: AppBar(title: const Text('History')),
+              body: const Center(child: CircularProgressIndicator()),
+            )
+          : HistoryScreen(
+              entries: entries,
+              onDelete: deleteEntry,
+            ),
+
+      InsightsScreen(entries: entries),
       const ResourcesScreen(),
       const SettingsScreen(),
     ];
 
     return Scaffold(
-      body: screens[_selectedIndex],
+      body: screens[selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onTap,
+        currentIndex: selectedIndex,
+        onTap: onTap,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),

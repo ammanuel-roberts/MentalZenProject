@@ -13,4 +13,14 @@ class FirestoreService {
         .doc(entry.entryId)
         .set(entry.toMap());
   }
+
+  Future<List<JournalEntry>> getEntries(String userId) async {
+    final snapshot = await getEntriesCollection(userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      return JournalEntry.fromDocument(doc);
+    }).toList();
+  }
 }
