@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/journal_entry.dart';
+import '../services/firestore_service.dart';
 
 class NewEntryScreen extends StatefulWidget {
   final Function(JournalEntry) onEntrySaved;
@@ -14,12 +16,14 @@ class NewEntryScreen extends StatefulWidget {
 }
 
 class _NewEntryScreenState extends State<NewEntryScreen> {
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _entryController = TextEditingController();
+  final TextEditingController titleController = TextEditingController();
+  final TextEditingController entryController = TextEditingController();
+  final FirestoreService firestoreService = FirestoreService();
 
-  String _selectedMood = 'Neutral';
+  String selectedMood = 'Neutral';
+  bool isSaving = false;
 
-  final List<String> _moods = [
+  final List<String> moods = [
     'Happy',
     'Calm',
     'Neutral',
@@ -27,40 +31,69 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     'Sad',
   ];
 
-  void _saveEntry() {
-    if (_titleController.text.trim().isEmpty ||
-        _entryController.text.trim().isEmpty) {
+  Future<void> saveEntry() async {
+    if (titleController.text.trim().isEmpty ||
+        entryController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a title and journal entry')),
       );
       return;
     }
 
+    final User? user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be logged in to save entries')),
+      );
+      return;
+    }
+
+    setState(() {
+      isSaving = true;
+    });
+
+    final String entryId = DateTime.now().millisecondsSinceEpoch.toString();
+
     final entry = JournalEntry(
-      title: _titleController.text.trim(),
-      text: _entryController.text.trim(),
-      mood: _selectedMood,
+      entryId: entryId,
+      userId: user.uid,
+      title: titleController.text.trim(),
+      text: entryController.text.trim(),
+      mood: selectedMood,
       createdAt: DateTime.now(),
     );
 
-    widget.onEntrySaved(entry);
+    try {
+      await firestoreService.addEntry(entry);
 
-    _titleController.clear();
-    _entryController.clear();
+      widget.onEntrySaved(entry);
+
+      titleController.clear();
+      entryController.clear();
+
+      setState(() {
+        selectedMood = 'Neutral';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entry saved to Firestore')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error saving entry')),
+      );
+    }
 
     setState(() {
-      _selectedMood = 'Neutral';
+      isSaving = false;
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Entry saved')),
-    );
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _entryController.dispose();
+    titleController.dispose();
+    entryController.dispose();
     super.dispose();
   }
 
@@ -79,17 +112,21 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
               'How are you feeling today?',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
+
             const SizedBox(height: 16),
+
             TextField(
-              controller: _titleController,
+              controller: titleController,
               decoration: const InputDecoration(
                 labelText: 'Entry Title',
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 16),
+
             TextField(
-              controller: _entryController,
+              controller: entryController,
               maxLines: 6,
               decoration: const InputDecoration(
                 labelText: 'Write your thoughts...',
@@ -97,32 +134,40 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
                 alignLabelWithHint: true,
               ),
             ),
+
             const SizedBox(height: 20),
+
             const Text(
               'Mood',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+
             const SizedBox(height: 8),
+
             Wrap(
               spacing: 8,
-              children: _moods.map((mood) {
+              children: moods.map((mood) {
                 return ChoiceChip(
                   label: Text(mood),
-                  selected: _selectedMood == mood,
+                  selected: selectedMood == mood,
                   onSelected: (selected) {
                     setState(() {
-                      _selectedMood = mood;
+                      selectedMood = mood;
                     });
                   },
                 );
               }).toList(),
             ),
+
             const SizedBox(height: 24),
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _saveEntry,
-                child: const Text('Save Entry'),
+                onPressed: isSaving ? null : saveEntry,
+                child: isSaving
+                    ? const CircularProgressIndicator()
+                    : const Text('Save Entry'),
               ),
             ),
           ],
